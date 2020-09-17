@@ -1,0 +1,401 @@
+---
+title: "DataCleaningProject1"
+author: "Amali"
+date: "03/09/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. 
+
+## This program contains code to clean up the MuseumArtsdata.
+## The data is a collection of museum objects from the Metropolitan
+## Museum of NewYork. The MetObjects.csv data file was downloaded from the 
+## museum github account, https://github.com/metmuseum/openaccess/. 
+## Interested users can download the csv file of size 266 MB from the above 
+## link. License information of this dataset is available in the LICENSE file.
+ 
+## Including dply library for data wrangling 
+```{r includelibs}
+library(dplyr)
+```
+
+## Reading MuseumArtsData
+```{r MuseumData}
+# using read.csv file to read the data. 
+# Sep is set to ",", as this is a comma delimited file. 
+# Encoding = "UTF-8", as this is a UTF-8
+# encoded data to include multilingual characters. 
+# na.strings is set to "", NA to look for these NAs in the data.
+MuseumData <- read.csv("./Data files/MuseumArtsData.csv", 
+                       header = TRUE,
+                       sep = ",",
+                       encoding = "UTF-8",
+                       na.strings = c("", NA)
+                       )
+
+# dim function is to display the dimension of the dataset
+dim(MuseumData)
+# str displays the structure of the dataset. One could identify
+# the types of the variables/ columns
+str(MuseumData)
+```
+
+## The MuseumData contains 474511 observations with 51 variables.
+## These are the data of artworks currently available in the Museum.
+
+## The str command displays the structure of the MuseumData. 
+## Many factor variables in the dataset has NA/"" as a level.
+## This indicates missing values in these factor columns.
+
+## Issues presented in the website are:
+## Missing values, inconsistent information, missing documentation,
+## possible duplication, mixed text and numeric data
+
+## The code identifies missing values in the dataset and removes
+## some features completely. Some observations with NA values are
+## omitted to do exploratory data analysis. After the cleaning process,
+## the program performs exploratory data 
+## analysis and provides some insights into the data. 
+
+## The following section gives the definition of some feature columns.
+## NOTE: This section will be expanded to include the definitions of
+## all features.
+## Object Number - The object number of the museum object is a factor 
+## with 471721 levels. There are some duplicates but with different 
+## unique object IDs. Since each unique object ID is associated with
+## a Museum object, these cannot be removed by object number.
+
+## Link Resource - This factor variable with 474511 unique levels matches the 
+## number of rows in the dataset. This might be useful in the search for any object.
+
+## Object ID - Object ID is an integer variable that identifies the rows uniquely.
+
+## AccessionYear - This is an integer variable with Year information.
+
+## Object Name - A Factor variable with some values in many languages.
+
+## Object Date - A Factor variable with both strings and numbers as levels, such as 19th century, early 19th century, 1880s.
+
+## Object Begin Date, Object End Date - These are integer variables with
+## the object begin date and end dates in the Museum. Some negative dates
+## and outliers were removed from the dataset.
+
+## Department - Department provides upto 19 types of artworks, such as
+## drawings and prints, european culture and decorative arts,
+## Ancient near eastern art, Photographs, and Musical instruments.
+
+## Artist.Begin.Date, Artist.End.Date  - These features are
+## factors. These could be changed to date/integer types. Some negative ## ## 
+## invalid numbers are present, which is removed as part of data cleaning.
+
+## Artist Gender - is a factor with 276 levels and with more NAs. This will
+## be cleaned up after finding the missingness percentage.
+
+## The column names of the data is changed using names function.
+```{r changecolnames}
+names(MuseumData) <- c("Object Number", "Highlight", "Timeline", "Public Domain",
+                       "Object ID", "Department", "AccessionYear", "Object Name",
+                       "Title", "Culture", "Period", "Dynasty", "Reign",
+                       "Portfolio",
+                       "Artist Role", "Artist Prefix", "Artist Display Name",
+                       "Artist Display Bio", "Artist Suffix", "Artist Alpha Sort",
+                       "Artist Nationality", "Artist Begin Date",
+                       "Artist End Date", "Artist Gender", "Artist ULAN URL",
+                       "Artist Wikidata URL", "Object Date", "Object Begin Date",
+                       "Object End Date", "Medium", "Dimensions", "Credit Line", 
+                       "Geography Type",
+                       "City", "State", "County", "Country", "Region",
+                       "Subregion", "Locale", "Locus", "Excavation", "River",
+                       "Classification", "Rights and Reproduction",
+                       "Link Resource", "Object wikidata URL", "Metadata Date",
+                       "Repository", "Tags", "Tags AAT URL")
+```
+
+## missingper function calculates the missing percentage of a row
+## or column
+```{r missingper}
+missingper <- function(x){
+   return( (sum(is.na(x))/length(x)) * 100)
+}
+
+# Calculate missingpercentage of missing values for each column/ feature
+# option = 2 and sort the resulting values.
+result <- apply(MuseumData, 2, missingper)
+sort(result, decreasing = TRUE)
+```
+
+## Based on the computed percentage of missing values per each feaure, we
+## can decide to remove features with more than 5% missingness.
+
+## AccessionYear is with only 0.86% missingness. 
+## The variables Period, Dynasty, Reign, Portfolio, Subregion, Locale,
+## Locus, Excavation, and River have above 81 - 100% missingness and have no data.
+## These variables must be removed from the dataset before doing any
+## analysis. Alternatively, information can be collected and added, if possible.
+
+## The variables RightandReproduction, ObjectWikidataURL, 
+## Region, State, County, ArtistGender, 
+## and ArtistSuffix are also with high percentage (>95%) of missingness.
+
+## Culture, ArtistRole, ArtistDisplayName, ArtistDisplayBio, ArtistAlphaSort,
+## ArtistNationality, ArtistBeginDate, ArtistEndDate, ArtistULANURL,
+## ArtistwikiURL, Tags, TagsAATURL - These variables have around 43% - 66%
+## missing values.
+
+```{r cleanup}
+## The features with 81 - 100% are completely removed from the dataset, since
+## about 95% values are not available.
+Features_removed <- c("Period", "Dynasty", "Reign", "Portfolio",
+                      "Subregion", "Locale", "Locus",
+                      "Excavation", "River", "Region",
+                      "State", "County", "Artist Gender", 
+                      "Artist Prefix",
+                      "Artist Suffix", "Geography Type",
+                      "Rights and Reproduction", "Object wikidata URL",
+                      "City", "Country")
+
+Features_included <- !(colnames(MuseumData) 
+                       %in% Features_removed)
+
+MuseumData <- MuseumData[, Features_included]
+
+MuseumData$`Artist Begin Date` <- 
+   as.numeric(as.character(MuseumData$`Artist Begin Date`)) 
+MuseumData$`Artist End Date` <- 
+   as.numeric(as.character(MuseumData$`Artist End Date`)) 
+
+```
+## Now, this MuseumData has all the observations with 31 variables, but with
+## missing values. Extracting from this data, will give NA values in some
+## columns until there is an update on data with filled-in values.
+
+```{r Featureset1cleanup}
+# Features_set1 - The features with 0-16% missingness are grouped together so
+## that we don't lose many rows with NA values as well as can do some
+## analysis on the data.
+Features_Set1 <- c("Object Number", "Highlight", "Timeline", 
+                   "Public Domain",
+                       "Object ID", "Department", "AccessionYear", 
+                       "Object Begin Date",
+                       "Object End Date",
+                       "Object Name",
+                       "Title", 
+                       "Object Date", 
+                       "Medium", "Dimensions", "Credit Line", 
+                       "Classification", 
+                       "Link Resource",  
+                       "Repository")
+
+## Feature_set2 - The features with about 43-66% informative missingness are
+## stored separately and can be used when asked for these details.
+Features_Set2 <- c("Culture", "Artist Role", "Artist Display Name",
+                   "Artist Display Bio", "Artist Alpha Sort",
+                   "Artist Nationality", "Artist Begin Date",
+                   "Artist End Date", "Artist ULAN URL",
+                   "Artist wikidata URL", "Tags", "Tags AAT URL")
+
+## Now, I'm using only Features_Set1 for analysis and to obtain some insights.
+MuseumDataSampleFS1 <- MuseumData[, Features_Set1]
+
+## na.omit is called on the dataset with Features_Set1 to remove NA
+## values in AccessionYear and other features. 
+MuseumDataSampleFS1 <- na.omit(MuseumDataSampleFS1)
+
+dim(MuseumDataSampleFS1)
+## After na.omit, we're left with 336,775 rows with 18 features in the 
+## Feature Set1.
+
+```
+
+```{r Objectdates}
+
+## Object Begin Date and Object End Date have negative values, so
+## keeping only the rows with positive date.
+
+MuseumDataSampleFS1 <- MuseumDataSampleFS1[
+                         MuseumDataSampleFS1$`Object Begin Date` > 0,]
+                          
+MuseumDataSampleFS1 <- MuseumDataSampleFS1[
+                          MuseumDataSampleFS1$`Object End Date` > 0, ]
+
+boxplot(MuseumDataSampleFS1$`Object Begin Date`,
+        main = "Object Begin Date")
+
+## Boxplot shows one outlier at 5000. This cannot be removed from the
+## dataset as this could be a real object from 5,000 years ago.
+
+## Boxplot of object end date shows an outlier at 15000 and two more
+## outliers around 2800. However, removing only the row with 15000.
+
+maximum_end_date <- 15000
+
+MuseumDataSampleFS1 <- MuseumDataSampleFS1 %>%
+                      filter(`Object End Date` < maximum_end_date)
+
+boxplot(MuseumDataSampleFS1$`Object End Date`,
+        main = "Object end date")
+
+dim(MuseumDataSampleFS1)
+## The datasample for analysis has 316646 complete rows/ no NAs, with 18 features to work with.
+summary(MuseumDataSampleFS1)
+```
+
+```{r extractdata}
+extractdata <- function(startyear, endyear){
+  dataFromTo <- MuseumDataSampleFS1 %>%
+        filter( (AccessionYear >= startyear) & 
+                (AccessionYear <= endyear) )
+}
+```
+
+
+```{r AccessionYear}
+## Histogram plot of AccessionYear.
+hist(MuseumDataSampleFS1$AccessionYear)
+## The decade 1960-1970 is when there was the highest number of
+## museum objects accessed by the museum.
+
+department_sorted <- sort( table( MuseumDataSampleFS1$Department ), 
+                          decreasing = TRUE)
+barplot(department_sorted)
+
+
+creditline_sorted <- sort( table( MuseumDataSampleFS1$`Credit Line` ), 
+                       decreasing = TRUE)
+( head(creditline_sorted, 30) )
+
+barplot( head(creditline_sorted, 4) )
+## The display of creditline table shows that the Jefferson R. Burdick
+## collection as the one with the most number of objects gifted to the Museum.
+
+```
+
+```{r Objectlife}
+MuseumDataSampleFS1 <- 
+                   MuseumDataSampleFS1 %>%
+                     mutate(Object_life = `Object End Date` - `Object Begin Date`)
+
+## There are some negative object life results because of invalid
+## Object end dates and Object begin dates. So filtering out those
+## observations from the dataset.
+
+MuseumDataSampleFS1 <- MuseumDataSampleFS1 %>%
+                      filter(Object_life >= 0)
+
+par(mfrow=c(1,2))
+boxplot(MuseumDataSampleFS1$Object_life,
+        main = "Object life (with outliers)")
+## I've set the outline to FALSE, so no outliers are shown.
+boxplot(MuseumDataSampleFS1$Object_life,
+        main = "Object life (without outliers)",
+        outline = FALSE)
+summary(MuseumDataSampleFS1$Object_life)
+
+## As per the Boxplot and summary results of object life, the
+## median object life of Museum objects is 9 years, and the
+## average lifetime of the object is 45 years. The lifetime of 
+## most objects lies in the range 1(minimum value) to 99(3rd Quartile)
+## to 250(maximum value).There are some outliers past the maximum, but they're
+## objects with longer lifetimes in the Museum.
+```
+
+```{r insights60_70}
+## So, from here, I'm going to analyse the data using drill-down approach. 
+## This means using the filter function from dplyr and filtering only
+## the rows with AccessionYear 1960 - 1970 for further analysis.
+
+AccessionYear60_70 <- extractdata(1960, 1970)
+
+barplot(table(AccessionYear60_70$AccessionYear),
+        main = "Museum objects by AccessionYear",
+        xlab = "AccessionYear",
+        ylab = "Frequency",
+        col = "light blue")
+
+## The year with the most number of museum art objects accessed is 1963, with almost 40,000 objects only in that year.
+top4artsdept <- head( sort( table( AccessionYear60_70$Department ),
+                        decreasing = TRUE), 4 )
+barplot(top4artsdept,
+        main = "Top 4 Arts Department in the decade 1960 - 1970",
+        xlab = "Department")
+
+## In the decade 1960-1970, the museum has accessed almost 60000 drawings and prints, ## which is substantially higher than other types.
+## Next most accessed arts, of size less than 5000, are the European Sculpture and 
+## Decorative Arts, the American wing and Photographs, in decreasing order of
+## their numbers in the museum. The numbers of other department types are much
+## smaller than the drawings and prints.
+
+medium_sorted <- sort( table( AccessionYear60_70$Medium ), 
+                       decreasing = TRUE)
+( head(medium_sorted, 25) )
+
+creditline_sorted <- sort( table( AccessionYear60_70$CreditLine ), 
+                       decreasing = TRUE)
+barplot( head(creditline_sorted, 4),
+         col = "light blue")
+## During this decade, the museum has accessed/ obtained a very large collection
+## from Jefferson R. Burdick, Gift of Jefferson R. Burdick, of about 40000 objects.
+```
+
+```{r insights_00_10}
+## 2000 - 2010
+AccessionYear2000_2010 <- extractdata(2000, 2010)
+
+barplot(table(AccessionYear2000_2010$AccessionYear),
+        main = "Museum objects by AccessionYear",
+        xlab = "AccessionYear",
+        ylab = "Frequency",
+        col = "light blue")
+
+## The year 2005 tops the list with the most number of museum art 
+## objects accessed, with almost 5,000 objects only in that year, which
+## is significantly more than in any other year during the period.
+top4artsdept <- head( sort( table( AccessionYear2000_2010$Department ),
+                        decreasing = TRUE), 4 )
+barplot(top4artsdept,
+        main = "Top 4 Arts Department in the decade 2000 - 2010",
+        xlab = "Department")
+
+creditline_sorted <- sort( table( AccessionYear2000_2010$CreditLine ), 
+                       decreasing = TRUE)
+barplot( head(creditline_sorted, 3),
+         col = "light blue")
+```
+
+```{r insights10_20}
+## 2010 - 2020
+AccessionYear2010_2020 <- extractdata(2010, 2020)
+
+barplot(sort(table(AccessionYear2010_2020$AccessionYear)),
+        main = "Museum objects by AccessionYear",
+        xlab = "AccessionYear",
+        ylab = "Frequency",
+        col = "light blue")
+
+## The year 2012 tops the list with the most number of museum art 
+## objects accessed, with almost 2,500 objects only in that year, which
+## is more than in any other year during the period.
+top4artsdept <- head( sort( table( AccessionYear2010_2020$Department ),
+                        decreasing = TRUE), 4 )
+barplot(top4artsdept,
+        main = "Top 4 Arts Department in the decade 2010 - 2020",
+        xlab = "Department")
+
+table(AccessionYear2010_2020$AccessionYear, AccessionYear2010_2020$Department)
+
+creditline_sorted <- sort( table( AccessionYear2010_2020$CreditLine ), 
+                       decreasing = TRUE)
+barplot( head(creditline_sorted, 3),
+         col = "light blue")
+```
+
+
+
